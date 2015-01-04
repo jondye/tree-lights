@@ -2,7 +2,7 @@
 
 #define PIXEL_PIN   13    // Digital IO pin connected to the NeoPixels.
 
-#define PIXEL_COUNT 10//22
+#define PIXEL_COUNT 22
 
 #define BUTTON_PIN  3
 
