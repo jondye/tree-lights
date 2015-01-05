@@ -1,40 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 
 #define PIXEL_PIN   13    // Digital IO pin connected to the NeoPixels.
-
 #define PIXEL_COUNT 22
-
 #define BUTTON_PIN  3
-
-static const uint32_t WHITE = Adafruit_NeoPixel::Color(255, 255, 255);
-static const uint32_t OFF = Adafruit_NeoPixel::Color(0, 0, 0);
-
-class Tree
-{
-private:
-  Adafruit_NeoPixel pixels;
-  uint32_t target;
-  uint8_t steps;
-  
-public:
-  Tree(uint16_t count, uint8_t pin)
-    : pixels(count, pin)
-    , target(Adafruit_NeoPixel::Color(0, 0, 0))
-    , steps(50)
-  {
-  }
-  
-  void setup()
-  {
-    pixels.begin();
-    pixels.show();
-  }
-  
-  void step()
-  { 
-    pixels.show();
-  }
-};
 
 class Button
 {
@@ -101,10 +69,52 @@ public:
   }
 };
 
+class Nightlight
+{
+private:
+  byte brightness;
+  int8_t brightnessDelta;
+  
+public:
+  Nightlight()
+    : brightness(10)
+    , brightnessDelta(1)
+  {
+  }
+  
+  void held()
+  {
+    if (brightnessDelta > 0 && brightness == 255) {
+      brightnessDelta = -1;
+    } else if (brightnessDelta < 0 && brightness == 0) {
+      brightnessDelta = 1;
+    }
+    brightness += brightnessDelta;
+    
+    Serial.print("Brightness ");
+    Serial.println(brightness);
+  }
+  
+  void released()
+  {
+    brightnessDelta = -brightnessDelta;
+  }
+  
+  void reset()
+  {
+    brightness = 0;
+    brightnessDelta = 1;
+  }
+  
+  uint32_t colour()
+  {
+    return Adafruit_NeoPixel::Color(brightness, brightness/2, 0);
+  }
+};
+
 Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN); 
 Button button(BUTTON_PIN);
-byte brightness = 10;
-int brightnessDelta = 1;
+Nightlight nightlight;
 byte on = false;
 byte lastHeld = false;
 
@@ -126,7 +136,7 @@ void loop()
     if (on) {
       Serial.println("Turning on");
       for (int i = 0; i != pixels.numPixels(); ++i) {
-        pixels.setPixelColor(i, brightness, brightness/2, 0);
+        pixels.setPixelColor(i, nightlight.colour());
       }
     } else {
       Serial.println("Turning off");
@@ -138,23 +148,14 @@ void loop()
   const byte held = button.held();
   
   if (held) {
-    Serial.println(brightnessDelta);
     if (on) {
-      if (brightnessDelta > 0 && brightness == 255) {
-        brightnessDelta = -1;
-      } else if (brightnessDelta < 0 && brightness == 0) {
-        brightnessDelta = 1;
-      }
-      brightness += brightnessDelta; 
+      nightlight.held();
     } else {
       on = true;
-      brightness = 0;
-      brightnessDelta = 1;
+      nightlight.reset();
     }
-    Serial.print("Brightness ");
-    Serial.println(brightness);
     for (int i = 0; i != pixels.numPixels(); ++i) {
-      pixels.setPixelColor(i, brightness, brightness/2, 0);
+      pixels.setPixelColor(i, nightlight.colour());
     }
     pixels.show();
   }
@@ -162,7 +163,7 @@ void loop()
   if (held != lastHeld) {
     lastHeld = held;
     if (!held) {
-      brightnessDelta = -brightnessDelta;
+      nightlight.released();
     }
   }
   
