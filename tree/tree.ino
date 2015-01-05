@@ -1,4 +1,7 @@
 #include <Adafruit_NeoPixel.h>
+#include <Time.h>
+#include <Wire.h>
+#include <DS3232RTC.h>
 
 #define PIXEL_PIN   13    // Digital IO pin connected to the NeoPixels.
 #define PIXEL_COUNT 22
@@ -108,15 +111,20 @@ public:
   
   uint32_t colour()
   {
-    return Adafruit_NeoPixel::Color(brightness, brightness/2, 0);
+    if (timeStatus() == timeSet) {
+      const time_t t = now();
+      if (hour(t) >= 6 && hour(t) < 18) {
+        return Adafruit_NeoPixel::Color(brightness, brightness/2, 0);
+      }
+    }
+    
+    return Adafruit_NeoPixel::Color(brightness, 0, brightness);
   }
 };
 
 Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN); 
 Button button(BUTTON_PIN);
 Nightlight nightlight;
-byte on = false;
-byte lastHeld = false;
 
 void setup()
 {
@@ -124,25 +132,31 @@ void setup()
   pixels.show();
   button.setup();
   Serial.begin(9600);
-  Serial.println("Hello");
+  setSyncProvider(RTC.get);
+  if (timeStatus() != timeSet) {
+    Serial.println("Unable to sync with RTC");
+  } else {
+    Serial.println("RTC has set the system time");
+  }
 }
 
 void loop()
 {
+  static uint32_t lastColour = 0;
+  static byte on = false;
+  static byte lastHeld = false;
+  
   button.read();
   
   if (button.pressed()) {
     on = !on;
     if (on) {
       Serial.println("Turning on");
-      for (int i = 0; i != pixels.numPixels(); ++i) {
-        pixels.setPixelColor(i, nightlight.colour());
-      }
     } else {
       Serial.println("Turning off");
       pixels.clear();
+      pixels.show();
     }
-    pixels.show();
   }
   
   const byte held = button.held();
@@ -154,10 +168,6 @@ void loop()
       on = true;
       nightlight.reset();
     }
-    for (int i = 0; i != pixels.numPixels(); ++i) {
-      pixels.setPixelColor(i, nightlight.colour());
-    }
-    pixels.show();
   }
   
   if (held != lastHeld) {
@@ -165,6 +175,15 @@ void loop()
     if (!held) {
       nightlight.released();
     }
+  }
+  
+  const uint32_t colour = nightlight.colour();
+  if (lastColour != colour) {
+    for (int i = 0; i != pixels.numPixels(); ++i) {
+        pixels.setPixelColor(i, colour);
+    }
+    pixels.show();
+    lastColour = colour;
   }
   
   delay(10);
