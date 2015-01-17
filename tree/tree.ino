@@ -2,75 +2,11 @@
 #include <Time.h>
 #include <Wire.h>
 #include <DS3232RTC.h>
+#include "Button.h"
 
 #define PIXEL_PIN   13    // Digital IO pin connected to the NeoPixels.
 #define PIXEL_COUNT 22
 #define BUTTON_PIN  3
-
-class Button
-{
-private:
-  const int pin;
-  const long longPress;
-  const long debounceDelay;
-  int lastState;
-  long changeTime;
-  bool wasPressed;
-  
-  long elapsed()
-  {
-    return millis() - changeTime;
-  }
-  
-public:
-  Button(int pin, long longPress = 500, long debounceDelay = 50)
-    : pin(pin)
-    , longPress(longPress)
-    , debounceDelay(debounceDelay)
-    , lastState()
-    , changeTime()
-    , wasPressed(false)
-  {
-  }
-  
-  void setup()
-  {
-    pinMode(pin, INPUT_PULLUP);
-    changeTime = millis();
-    lastState = digitalRead(pin);
-  }
-  
-  bool pressed()
-  {
-    if (wasPressed) {
-      wasPressed = false;
-      return true;
-    }
-    return false;
-  }
-  
-  bool held()
-  {
-    return
-      (lastState == LOW)
-      && ((millis() - changeTime) >= longPress);
-  }
-  
-  void read()
-  {
-    const int state = digitalRead(pin);
-    const long now = millis();
-    if (state != lastState) {
-      const long elapsedTime = now - changeTime;
-      wasPressed =
-        (lastState == LOW)
-        && (elapsedTime > debounceDelay)
-        && (elapsedTime < longPress);
-      changeTime = now;
-      lastState = state;
-    }
-  }
-};
 
 class Nightlight
 {
