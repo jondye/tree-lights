@@ -58,6 +58,41 @@ public:
   }
 };
 
+time_t readDateTime()
+{
+  tmElements_t tm;
+  tm.Year = CalendarYrToTm(Serial.parseInt());
+  tm.Month = Serial.parseInt();
+  tm.Day = Serial.parseInt();
+  tm.Hour = Serial.parseInt();
+  tm.Minute = Serial.parseInt();
+  tm.Second = Serial.parseInt();
+  return makeTime(tm);
+}
+
+void print_2digit(Print &out, int value)
+{
+  if (value < 10) {
+    out.print('0');
+  }
+  out.print(value);
+}
+
+void print_date(Print &out, time_t t)
+{
+  out.print(year(t));
+  out.print('-');
+  print_2digit(Serial, month(t));
+  out.print('-');
+  print_2digit(Serial, day(t));
+  out.print('T');
+  print_2digit(Serial, hour(t));
+  out.print(':');
+  print_2digit(Serial, minute(t));
+  out.print(':');
+  print_2digit(Serial, second(t));
+}
+
 Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN); 
 Button button(BUTTON_PIN);
 Nightlight nightlight;
@@ -72,7 +107,9 @@ void setup()
   if (timeStatus() != timeSet) {
     Serial.println("Unable to sync with RTC");
   } else {
-    Serial.println("RTC has set the system time");
+    Serial.print("RTC has set the system time to ");
+    print_date(Serial, now());
+    Serial.println();
   }
 }
 
@@ -120,6 +157,18 @@ void loop()
     }
     pixels.show();
     lastColour = colour;
+  }
+
+  if (Serial.available() >= 14) {
+    time_t t = readDateTime();
+    RTC.set(t);
+    setTime(t);
+    Serial.print("Time set to ");
+    print_date(Serial, now());
+    Serial.println();
+    while (Serial.available() > 0) {
+      Serial.read(); // dump extra characters
+    }
   }
   
   delay(10);
