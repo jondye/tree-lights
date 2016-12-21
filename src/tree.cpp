@@ -51,7 +51,7 @@ public:
   {
     if (timeStatus() == timeSet) {
       const time_t t = now();
-      if (hour(t) >= 6 && hour(t) < 19) {
+      if (hour(t) >= 7 && hour(t) < 20) {
         return Adafruit_NeoPixel::Color(brightness, brightness/2, 0);
       }
     }
