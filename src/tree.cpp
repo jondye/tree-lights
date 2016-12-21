@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include <Adafruit_NeoPixel.h>
 #include <Time.h>
 #include <Wire.h>
@@ -13,14 +15,14 @@ class Nightlight
 private:
   byte brightness;
   int8_t brightnessDelta;
-  
+
 public:
   Nightlight()
     : brightness(10)
     , brightnessDelta(1)
   {
   }
-  
+
   void held()
   {
     if (brightnessDelta > 0 && brightness == 255) {
@@ -29,22 +31,22 @@ public:
       brightnessDelta = 1;
     }
     brightness += brightnessDelta;
-    
+
     Serial.print("Brightness ");
     Serial.println(brightness);
   }
-  
+
   void released()
   {
     brightnessDelta = -brightnessDelta;
   }
-  
+
   void reset()
   {
     brightness = 0;
     brightnessDelta = 1;
   }
-  
+
   uint32_t colour()
   {
     if (timeStatus() == timeSet) {
@@ -53,7 +55,7 @@ public:
         return Adafruit_NeoPixel::Color(brightness, brightness/2, 0);
       }
     }
-    
+
     return Adafruit_NeoPixel::Color(brightness, 0, brightness);
   }
 };
@@ -93,7 +95,7 @@ void print_date(Print &out, time_t t)
   print_2digit(Serial, second(t));
 }
 
-Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN); 
+Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN);
 Button button(BUTTON_PIN);
 Nightlight nightlight;
 
@@ -118,9 +120,9 @@ void loop()
   static uint32_t lastColour = 0;
   static byte on = false;
   static byte lastHeld = false;
-  
+
   button.read();
-  
+
   if (button.pressed()) {
     on = !on;
     if (on) {
@@ -131,9 +133,9 @@ void loop()
       pixels.show();
     }
   }
-  
+
   const byte held = button.held();
-  
+
   if (held) {
     if (on) {
       nightlight.held();
@@ -142,14 +144,14 @@ void loop()
       nightlight.reset();
     }
   }
-  
+
   if (held != lastHeld) {
     lastHeld = held;
     if (!held) {
       nightlight.released();
     }
   }
-  
+
   const uint32_t colour = nightlight.colour();
   if (lastColour != colour) {
     for (int i = 0; i != pixels.numPixels(); ++i) {
@@ -170,7 +172,6 @@ void loop()
       Serial.read(); // dump extra characters
     }
   }
-  
+
   delay(10);
 }
-
