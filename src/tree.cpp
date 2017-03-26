@@ -1,9 +1,11 @@
 #include <Arduino.h>
 
 #include <Adafruit_NeoPixel.h>
+#include <DS3232RTC.h>
+#include <SerialCommand.h>
 #include <Time.h>
 #include <Wire.h>
-#include <DS3232RTC.h>
+
 #include "Button.h"
 
 #define PIXEL_PIN   5    // Digital IO pin connected to the NeoPixels.
@@ -60,18 +62,6 @@ public:
   }
 };
 
-time_t readDateTime()
-{
-  tmElements_t tm;
-  tm.Year = CalendarYrToTm(Serial.parseInt());
-  tm.Month = Serial.parseInt();
-  tm.Day = Serial.parseInt();
-  tm.Hour = Serial.parseInt();
-  tm.Minute = Serial.parseInt();
-  tm.Second = Serial.parseInt();
-  return makeTime(tm);
-}
-
 void print_2digit(Print &out, int value)
 {
   if (value < 10) {
@@ -84,27 +74,54 @@ void print_date(Print &out, time_t t)
 {
   out.print(year(t));
   out.print('-');
-  print_2digit(Serial, month(t));
+  print_2digit(out, month(t));
   out.print('-');
-  print_2digit(Serial, day(t));
+  print_2digit(out, day(t));
   out.print('T');
-  print_2digit(Serial, hour(t));
+  print_2digit(out, hour(t));
   out.print(':');
-  print_2digit(Serial, minute(t));
+  print_2digit(out, minute(t));
   out.print(':');
-  print_2digit(Serial, second(t));
+  print_2digit(out, second(t));
 }
 
 Adafruit_NeoPixel pixels(PIXEL_COUNT, PIXEL_PIN);
 Button button(BUTTON_PIN);
 Nightlight nightlight;
+SerialCommand serialcmd;
+
+void set_time()
+{
+  int numbers[6] = {};
+  for (auto & number : numbers) {
+    const char *const arg = serialcmd.next();
+    if (arg == nullptr) {
+      Serial.println("Invalid time format");
+      return;
+    }
+    number = strtol(arg, NULL, 10);
+  }
+  tmElements_t tm;
+  tm.Year = CalendarYrToTm(numbers[0]);
+  tm.Month = numbers[1];
+  tm.Day = numbers[2];
+  tm.Hour = numbers[3];
+  tm.Minute = numbers[4];
+  tm.Second = numbers[5];
+  const time_t t = makeTime(tm);
+  RTC.set(t);
+  setTime(t);
+  Serial.print("time ");
+  print_date(Serial, now());
+  Serial.println();
+}
 
 void setup()
 {
+  Serial.begin(9600);
   pixels.begin();
   pixels.show();
   button.setup();
-  Serial.begin(9600);
   setSyncProvider(RTC.get);
   if (timeStatus() != timeSet) {
     Serial.println("Unable to sync with RTC");
@@ -113,6 +130,7 @@ void setup()
     print_date(Serial, now());
     Serial.println();
   }
+  serialcmd.addCommand("settime", set_time);
 }
 
 void loop()
@@ -122,6 +140,7 @@ void loop()
   static byte lastHeld = false;
 
   button.read();
+  serialcmd.readSerial();
 
   if (button.pressed()) {
     on = !on;
@@ -159,18 +178,6 @@ void loop()
     }
     pixels.show();
     lastColour = colour;
-  }
-
-  if (Serial.available() >= 14) {
-    time_t t = readDateTime();
-    RTC.set(t);
-    setTime(t);
-    Serial.print("Time set to ");
-    print_date(Serial, now());
-    Serial.println();
-    while (Serial.available() > 0) {
-      Serial.read(); // dump extra characters
-    }
   }
 
   delay(10);
