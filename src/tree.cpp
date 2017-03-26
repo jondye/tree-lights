@@ -173,7 +173,7 @@ void loop()
 
   const uint32_t colour = nightlight.colour();
   if (lastColour != colour) {
-    for (int i = 0; i != pixels.numPixels(); ++i) {
+    for (unsigned i = 0; i != pixels.numPixels(); ++i) {
         pixels.setPixelColor(i, colour);
     }
     pixels.show();
